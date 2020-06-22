@@ -72,28 +72,3 @@ make test
 
 # Other Notes
 The "counterfactual" link is to maintain backwards compatability with code developed for a previous paper manuscript. 
-
-# Contributing
-
-Please checkout a branch in your own name (e.g. I would check out `david`). When something
-is finished, merge into master and let the group know.
-
-Please put python module code in directory `adp` such as new sklearn estimators.
-
-For scratch scripts, test scripts or experimental scripts, please put in `scripts`.
-
-For any notebook demos or visualizations, please put in directory `scripts/notebooks`.
-
-# TODO
-1. Check figures for each notebook.
-1. Consolidate models and data.
-1. Zip and host file for models and data.
-
-1. Test data/model download and setup.
-1. Add Lipschitz utility to module.
-
-Zip models and data:
-```bash
-zip -r adp-example-models.zip models/ -x "models/README.md"
-zip -r adp-example-data.zip data/ -x data/README.md -x "data/MNIST/*" -x "data/GTSRB/*"
-```
