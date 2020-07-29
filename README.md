@@ -95,7 +95,7 @@ jupyter notebook
 Each figure can be reproduced by running the following notebooks:
 
 1. Figure 1 - figure-loan-optimize.ipynb
-2. Figure 2 - figure-local-vs-counterfactual.ipynb 
+2. Figure 2 - notebooks/figure-contrast-with-local-approximation.ipynb
 3. Figure 3 - figure-lipschitz-bounded.ipynb
 4. Figure 4 - figure-loan-model-comparison.ipynb
 5. Figure 5 - figure-selection-bias.ipynb
@@ -111,6 +111,3 @@ We have provided a Makefile for running all the notebooks.  Merely run the follo
 ```bash
 make test
 ```
-
-## Other Notes
-The "counterfactual" link is to maintain backwards compatability with code developed for a previous paper manuscript. 
