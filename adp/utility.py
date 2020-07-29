@@ -32,7 +32,7 @@ class Utility():
                         for args in args_list])
 
 
-class ModelComparisonUtility(Utility):
+class ModelContrastUtility(Utility):
     def __init__(self, model, other_model, scoring='neg_mean_squared_error'):
         self.model = model
         self.other_model = other_model
@@ -52,7 +52,10 @@ class ModelComparisonUtility(Utility):
         return self.other_model
 
 
-GlobalModelUtility = ModelComparisonUtility
+GlobalModelUtility = ModelContrastUtility  # Deprecated alias
+
+
+ModelComparisonUtility = ModelContrastUtility  # Deprecated alias
 
 
 class LeastConstantUtility(ModelComparisonUtility):

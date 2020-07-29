@@ -54,7 +54,7 @@ def create_and_train_models(model_names, dtypes, X_train, y_train, X_test=None, 
                 fitted_estimator = pickle.load(f)
             d['estimator'] = fitted_estimator
         else:
-            print('Training estimator because could not load from cache via file %s' % cache_filename)
+            print('Training estimator because fitted model could not be load from the cache via file %s' % cache_filename)
             d['estimator'].fit(X_train, y_train)
             # Save model into cache
             def ensure_dir(file_path):
@@ -77,6 +77,20 @@ def create_model(model_name, dtypes, random_state=0):
         param_grid = {
             'svc__C': np.logspace(-1, 3, 10),
             'svc__gamma': np.logspace(-4, 1, 10),
+        }
+        estimator = _create_cv_pipe(base_estimator, param_grid, dtypes, random_state=random_state)
+        def get_model(estimator):
+            def model(X):
+                func = estimator.decision_function
+                if np.asarray(X).ndim == 1:
+                    return func(X.reshape(1, -1))[0]
+                return func(X)
+            return model
+    elif model_name == 'RBFSVM-2':
+        base_estimator = SVC(random_state=random_state)
+        param_grid = {
+            'svc__C': np.logspace(-1, 1, 10),
+            'svc__gamma': np.logspace(-3, 1, 10),
         }
         estimator = _create_cv_pipe(base_estimator, param_grid, dtypes, random_state=random_state)
         def get_model(estimator):
@@ -162,7 +176,23 @@ def create_model(model_name, dtypes, random_state=0):
                     p = func(X)[:, 1]
                 return _logit(p)
             return random_forest_model
+    elif model_name == 'RandomForest-2':
+        base_estimator = RandomForestClassifier(max_features=None, random_state=2)
+        param_grid = {
+            'randomforestclassifier__max_depth': [4, 5, 6],
+            'randomforestclassifier__n_estimators': [100, 200, 400],#[1, 2, 3, 4, 5],
+        }
 
+        estimator = _create_cv_pipe(base_estimator, param_grid, dtypes, random_state=random_state)
+        def get_model(estimator):
+            def random_forest_model(X):
+                func = estimator.predict_proba
+                if np.asarray(X).ndim == 1:
+                    p = func(X.reshape(1, -1))[0][1]
+                else:
+                    p = func(X)[:, 1]
+                return p
+            return random_forest_model
     else:  ##############
         raise ValueError('Could not recognize "%s" model name.' % model_name)
 
