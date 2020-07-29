@@ -290,7 +290,7 @@ def _logit(p):
 
 
 def _is_categorical(dtypes):
-    # Copied from counterfactual.funcs module for convenience
+    # Copied from adp.funcs module for convenience
     def check_dtype(dtype):
         if pd.api.types.is_categorical_dtype(dtype):
             return True
