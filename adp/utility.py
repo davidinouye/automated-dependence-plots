@@ -305,32 +305,6 @@ class LeastCurvatureUtility(MostCurvatureUtility):
         return -1.0
     
 
-class OldLeastMonotonicUtility(Utility):
-    def __init__(self, model):
-        self.model = model
-        
-    def _single_curve(self, X_curve, s):
-        if len(s) < 2:
-            return 0
-        bandwidth = s[1] - s[0]
-        f_out = self.model(X_curve)
-        grad_f_out = np.gradient(f_out, s)
-        upper = np.sum(np.maximum(0, grad_f_out)) * bandwidth
-        lower = np.sum(np.maximum(0, -grad_f_out)) * bandwidth
-        return self._multiplier() * np.minimum(upper, lower)
-
-    def _multiplier(self):
-        return 1.0
-
-
-class OldMostMonotonicUtility(LeastMonotonicUtility):
-    def _multiplier(self):
-        return -1.0
-
-
-OldMonotonicUtility = OldLeastMonotonicUtility
-
-    
 class ConditionalLinearUtility(Utility):
     def __init__(self, model):
         self.model = model
