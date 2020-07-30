@@ -54,9 +54,6 @@ class ModelContrastUtility(Utility):
         return self.other_model
 
 
-ModelComparisonUtility = ModelContrastUtility  # Deprecated alias
-
-
 class LeastConstantUtility(ModelContrastUtility):
     def __init__(self, model, scoring='neg_mean_squared_error'):
         self.model = model
