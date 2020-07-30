@@ -244,10 +244,6 @@ def plot_curve_vals(curve, model=None, utility=None, feature_labels=None, n_grid
     if utility is not None:
         U = utility(curve, n_grid=n_grid)
         utility_label = type(utility).__name__
-        # Hack to replace title names
-        if utility_label == 'GlobalModelUtility':
-            warnings.warn('Please use `ModelComparisonUtility` instead of `GlobalModelUtility`.')
-            utility_label = 'ModelComparisonUtility'
         if utility_label == 'GeneralizabilityUtility':
             warnings.warn('Please use `UniquenessUtility` instead of `GeneralizabilityUtility`.')
             utility_label = 'UniquenessUtility'

@@ -54,9 +54,6 @@ class ModelContrastUtility(Utility):
         return self.other_model
 
 
-GlobalModelUtility = ModelContrastUtility  # Deprecated alias
-
-
 ModelComparisonUtility = ModelContrastUtility  # Deprecated alias
 
 
