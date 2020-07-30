@@ -343,10 +343,8 @@ def _is_categorical(dtypes):
 
 
 def _create_pipe(estimator, dtypes):
-    one_hot = OneHotEncoder(
-        sparse=False,  
-        categories=[dtype.categories for dtype in dtypes[_is_categorical(dtypes)]]
-    )
+    categories = [np.arange(len(dtype.categories)) for dtype in dtypes[_is_categorical(dtypes)]]
+    one_hot = OneHotEncoder(sparse=False, categories=categories)
     return make_pipeline(
         ColumnTransformer([("One_Hot_Encoder", one_hot, _is_categorical(dtypes))], remainder="passthrough"),
         StandardScaler(),
