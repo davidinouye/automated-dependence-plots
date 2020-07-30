@@ -58,7 +58,7 @@ GlobalModelUtility = ModelContrastUtility  # Deprecated alias
 ModelComparisonUtility = ModelContrastUtility  # Deprecated alias
 
 
-class LeastConstantUtility(ModelComparisonUtility):
+class LeastConstantUtility(ModelContrastUtility):
     def __init__(self, model, scoring='neg_mean_squared_error'):
         self.model = model
         self.scoring = scoring
