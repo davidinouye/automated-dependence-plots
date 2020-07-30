@@ -1,4 +1,4 @@
-name: adp-env
+name: adp-env-new-sklearn
 channels:
   - defaults
   - pytorch
@@ -9,7 +9,7 @@ dependencies:
   - scipy=1.4.*
   - scikit-image
   - pillow=7.1.*
-  - scikit-learn=0.19.*
+  - scikit-learn=0.23.*
   - pandas=1.0.*
   - matplotlib=3.2.*
   - seaborn=0.10.*
