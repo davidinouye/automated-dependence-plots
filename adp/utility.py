@@ -140,7 +140,7 @@ class LeastKernelRidgeUtility(BestPartialModelUtility):
         self.regression_estimator = KernelRidge(kernel=kernel, gamma=gamma, alpha=alpha, **kernel_ridge_params)
 
 
-class FixedIsotonicRegression(IsotonicRegression):
+class _FixedIsotonicRegression(IsotonicRegression):
     """
     This class fixes the issue that IsotonicRegression takes
     only a vector x.
@@ -154,17 +154,17 @@ class FixedIsotonicRegression(IsotonicRegression):
         X = self._check_X(X)
         if self.increasing == 'auto':
             self.increasing = True
-            super(FixedIsotonicRegression, self).fit(X, y)
+            super(_FixedIsotonicRegression, self).fit(X, y)
             score_inc = self.score(X, y)
 
             self.increasing = False
-            super(FixedIsotonicRegression, self).fit(X, y)
+            super(_FixedIsotonicRegression, self).fit(X, y)
             score_dec = self.score(X, y)
             
             if score_inc > score_dec:
                 # Refit because increasing was better
                 self.increasing = True
-                super(FixedIsotonicRegression, self).fit(X, y)
+                super(_FixedIsotonicRegression, self).fit(X, y)
             
             # Reset increasing parameter
             self.increasing = 'auto'
@@ -172,7 +172,7 @@ class FixedIsotonicRegression(IsotonicRegression):
     
     def predict(self, X):
         X = self._check_X(X)
-        return super(FixedIsotonicRegression, self).predict(X)
+        return super(_FixedIsotonicRegression, self).predict(X)
         
     def _check_X(self, X):
         X = column_or_1d(X)  # Convert single column or 1d vector to 1d vector
@@ -183,7 +183,7 @@ class LeastMonotonicUtility(BestPartialModelUtility):
     def __init__(self, model, scoring='neg_mean_squared_error'):
         self.model = model
         self.scoring = scoring
-        self.regression_estimator = FixedIsotonicRegression(
+        self.regression_estimator = _FixedIsotonicRegression(
             increasing='auto', out_of_bounds='clip')
 
 
