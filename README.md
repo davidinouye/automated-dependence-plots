@@ -92,6 +92,10 @@ cd notebooks/
 jupyter notebook
 ```
 ### Figures
+NOTE: Figures may be slightly different than original paper because we updated to using sklearn 0.23
+instead of 0.19 that was originally used in the paper.  If you want to reproduce the exact figures, please
+see the tag v0.0.1 (note the environment is also different so you will need to create a new environment).
+
 Each figure can be reproduced by running the following notebooks:
 
 1. Figure 1 - figure-loan-optimize.ipynb
