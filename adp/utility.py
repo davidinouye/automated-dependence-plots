@@ -4,7 +4,7 @@ import torch
 import numpy as np
 from sklearn.base import clone
 from sklearn.utils import check_random_state
-from sklearn.metrics.scorer import check_scoring, get_scorer
+from sklearn.metrics import check_scoring, get_scorer
 from sklearn.isotonic import IsotonicRegression
 from sklearn.linear_model import LinearRegression
 from sklearn.utils.validation import check_array, column_or_1d
