@@ -302,15 +302,6 @@ def fetch_german_data():
     return dict(X=X, y=y, dtypes=dtypes, feature_labels=feature_labels, dataframe=df)
 
 
-def create_constant_model(x0, model):
-    # Comparison to constant model
-    def constant_model(X): # Constant model
-        if np.asarray(X).ndim == 1:
-            return model(x0)
-        return np.ones(X.shape[0]) * model(x0)
-    return constant_model
-
-
 ###############
 # Private helper functions
 ###############

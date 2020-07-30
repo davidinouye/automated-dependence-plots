@@ -387,7 +387,7 @@ class UniquenessUtility(Utility):
         ])
 
 
-class GradientUniquenessUtility(GeneralizabilityUtility):
+class GradientUniquenessUtility(UniquenessUtility):
     def _curve_difference(self, curve, other_curve, args_list):
         def get_gradients(curve, args):
             X_curve = curve(*args)
