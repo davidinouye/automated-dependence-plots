@@ -1,4 +1,4 @@
-name: adp-env-new-sklearn
+name: adp-env
 channels:
   - defaults
   - pytorch
