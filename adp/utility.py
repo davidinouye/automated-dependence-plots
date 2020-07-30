@@ -2,12 +2,14 @@ import warnings
 import copy
 import torch
 import numpy as np
-from sklearn.base import clone
+import scipy.optimize
+import scipy.interpolate
+from sklearn.base import clone, BaseEstimator, RegressorMixin
 from sklearn.utils import check_random_state
 from sklearn.metrics import check_scoring, get_scorer
 from sklearn.isotonic import IsotonicRegression
 from sklearn.linear_model import LinearRegression
-from sklearn.utils.validation import check_array, column_or_1d
+from sklearn.utils.validation import check_array, column_or_1d, check_X_y
 from sklearn.kernel_ridge import KernelRidge
 
 def _get_s_vec(curve, n_grid):
@@ -193,6 +195,62 @@ class LeastMonotonicUtility(BestPartialModelUtility):
 
 # Alias for backwards compatibility
 MonotonicUtility = LeastMonotonicUtility
+
+
+class _LipschitzRegressor(BaseEstimator, RegressorMixin):
+    """
+    This class implements Lipschitz-bounded regression via 
+    least squares.
+    """
+    def __init__(self, lipschitz_constant):
+        self.lipschitz_constant = lipschitz_constant
+
+    def fit(self, X, y=None):
+        X, y = check_X_y(X, y)
+        x = self._check_X(X)
+        n_samples = x.shape[0]
+        L = self.lipschitz_constant
+
+        # Construct optimization problem and solve
+        A = np.zeros((n_samples, n_samples))
+        for i in range(n_samples):
+            if i == 0:
+                A[:,i] = 1
+            else:
+                A[i:,i] = (x[i] - x[i-1])
+        b = y.copy()
+        lower = -L * np.ones(n_samples)
+        lower[0] = -np.inf
+        upper = L * np.ones(n_samples)
+        upper[0] = np.inf
+        bounds = (lower, upper)
+
+        # Compute optimization
+        result = scipy.optimize.lsq_linear(A=A, b=b, bounds=bounds)
+        x_opt = result.x
+        yhat = np.dot(A, x_opt)
+
+        self.x_vals_ = x
+        self.y_vals_ = yhat
+        return self
+    
+    def predict(self, X):
+        x = self._check_X(X)
+        interp = scipy.interpolate.interp1d(
+            self.x_vals_, self.y_vals_, kind='linear', copy=False, fill_value='extrapolate')
+        ypred = interp(x)
+        return ypred
+        
+    def _check_X(self, X):
+        X = column_or_1d(X)  # Convert single column or 1d vector to 1d vector
+        return X
+
+
+class LeastLipschitzUtility(BestPartialModelUtility):
+    def __init__(self, model, lipschitz_constant=1, scoring='neg_mean_squared_error'):
+        self.model = model
+        self.scoring = scoring
+        self.regression_estimator = _LipschitzRegressor(lipschitz_constant)
 
 
 class TotalVariationUtility(Utility):
