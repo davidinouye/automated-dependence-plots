@@ -59,7 +59,7 @@ These tutorials showcase the basic functionality and structure of the code. From
 ## Installation
 
 ### Requirements
-We use a slightly older version of scikit-learn (0.19) but otherwise the packages are fairly standard.
+We use a recent version of scikit-learn (0.23) that includes partial dependence plots (might also be included in sklearn 0.22).
 To setup a conda environment and install requirements: 
 ```setup
 make conda-env
