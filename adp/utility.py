@@ -387,9 +387,6 @@ class UniquenessUtility(Utility):
         ])
 
 
-GeneralizabilityUtility = UniquenessUtility
-
-
 class GradientUniquenessUtility(GeneralizabilityUtility):
     def _curve_difference(self, curve, other_curve, args_list):
         def get_gradients(curve, args):
@@ -401,5 +398,3 @@ class GradientUniquenessUtility(GeneralizabilityUtility):
             np.mean(np.abs(get_gradients(curve, args) - get_gradients(other_curve, args)))
             for args in args_list
         ])
-
-GradientGeneralizabilityUtility = GradientUniquenessUtility

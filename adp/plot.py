@@ -244,9 +244,6 @@ def plot_curve_vals(curve, model=None, utility=None, feature_labels=None, n_grid
     if utility is not None:
         U = utility(curve, n_grid=n_grid)
         utility_label = type(utility).__name__
-        if utility_label == 'GeneralizabilityUtility':
-            warnings.warn('Please use `UniquenessUtility` instead of `GeneralizabilityUtility`.')
-            utility_label = 'UniquenessUtility'
         title = '%s=%.2g' % (utility_label, U)
         if auxiliary_scoring is not None:
             try:
