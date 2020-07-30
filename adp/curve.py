@@ -96,7 +96,7 @@ class LinearCurve():
 
         # Handle scalars
         if scalar_input:
-            return np.squeeze(result)
+            return result.ravel()
         return result
 
     def fit(self, X, y=None):
@@ -261,7 +261,7 @@ class CategoricalLinearCurve(LinearCurve):
 
         # Handle scalar input
         if scalar_input:
-            return np.squeeze(X)
+            return X.ravel()
         return X
 
     def is_only_categorical(self):
