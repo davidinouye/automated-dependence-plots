@@ -7,7 +7,7 @@ import numpy as np
 import scipy.stats
 import pandas as pd
 
-from sklearn.base import BaseEstimator
+from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.utils import check_random_state
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.pipeline import Pipeline, make_pipeline
@@ -17,6 +17,7 @@ from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.svm import SVC
 from sklearn.metrics import accuracy_score
+from sklearn.compose import ColumnTransformer 
 
 import torch, torchvision
 import torch.nn as nn
@@ -161,6 +162,7 @@ def create_model(model_name, dtypes, random_state=0):
             return gradient_boost_model
     elif model_name == 'RandomForest':
         base_estimator = RandomForestClassifier(max_features=None, random_state=random_state)
+
         param_grid = {
             'randomforestclassifier__max_depth': [4, 5, 6],
             'randomforestclassifier__n_estimators': [100, 200, 400],#[1, 2, 3, 4, 5],
@@ -341,9 +343,12 @@ def _is_categorical(dtypes):
 
 
 def _create_pipe(estimator, dtypes):
+    one_hot = OneHotEncoder(
+        sparse=False,  
+        categories=[dtype.categories for dtype in dtypes[_is_categorical(dtypes)]]
+    )
     return make_pipeline(
-        OneHotEncoder(sparse=False, categorical_features=_is_categorical(dtypes), 
-                      n_values=np.array([len(dtype.categories) for dtype in dtypes if hasattr(dtype, 'categories')])),
+        ColumnTransformer([("One_Hot_Encoder", one_hot, _is_categorical(dtypes))], remainder="passthrough"),
         StandardScaler(),
         estimator,
     )
@@ -351,8 +356,8 @@ def _create_pipe(estimator, dtypes):
 
 def _create_cv_pipe(estimator, param_grid, dtypes, random_state=0):
     pipe = _create_pipe(estimator, dtypes)
-    cv = StratifiedKFold(5, random_state=random_state)
-    return GridSearchCV(pipe, param_grid, scoring='accuracy', iid=False, cv=cv, refit=True)
+    cv = StratifiedKFold(5)
+    return GridSearchCV(pipe, param_grid, scoring='accuracy', cv=cv, refit=True)
 
 
 #######################
@@ -411,7 +416,7 @@ class _CreateDataset(Dataset):
         return (torch.from_numpy(self.x[idx,:]), torch.from_numpy(np.array(self.y[idx], dtype=np.int)))
     
 
-class _DNNEstimator(BaseEstimator):
+class _DNNEstimator(BaseEstimator, ClassifierMixin):
     def __init__(self, max_epoch=5000, lr=0.01, batch=64, random_state=None):
         self.max_epoch = max_epoch
         self.lr = lr
