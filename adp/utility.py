@@ -6,7 +6,7 @@ import scipy.optimize
 import scipy.interpolate
 from sklearn.base import clone, BaseEstimator, RegressorMixin
 from sklearn.utils import check_random_state
-from sklearn.metrics import check_scoring, get_scorer
+from sklearn.metrics import mean_squared_error
 from sklearn.isotonic import IsotonicRegression
 from sklearn.linear_model import LinearRegression
 from sklearn.utils.validation import check_array, column_or_1d, check_X_y
@@ -22,45 +22,8 @@ def _get_s_vec(curve, n_grid):
     return np.linspace(0, 1, num=n_grid)
 
 
-class Utility():
+class _Utility():
     def __call__(self, curve, n_grid=50):
-        # Take the average utility over all categorical settings
-        s = _get_s_vec(curve, n_grid)
-        try:
-            args_list = [(s, z) for z in curve.get_possible_z_idx()]
-        except AttributeError:
-            args_list = [(s,)]  # Do not need to handle categorical
-        return np.mean([self._single_curve(curve(*args), s) 
-                        for args in args_list])
-
-
-class ModelContrastUtility(Utility):
-    def __init__(self, model, other_model, scoring='neg_mean_squared_error'):
-        self.model = model
-        self.other_model = other_model
-        self.scoring = scoring
-
-    def _single_curve(self, X_curve, s):
-        scorer = get_scorer(self.scoring)
-        y_curve = self.model(X_curve)
-        class _WrapperEstimator():
-            def predict(_, X):
-                return self.other_model(X)
-        score = scorer(_WrapperEstimator(), X_curve, y_curve)
-        loss = -score
-        return loss
-
-    def get_comparison_model(self, x0):
-        return self.other_model
-
-
-class LeastConstantUtility(ModelContrastUtility):
-    def __init__(self, model, scoring='neg_mean_squared_error'):
-        self.model = model
-        self.scoring = scoring
-
-    def __call__(self, curve, n_grid=50):
-        # Copied from Utility since need to include x0 
         # Take the average utility over all categorical settings
         s = _get_s_vec(curve, n_grid)
         try:
@@ -70,19 +33,43 @@ class LeastConstantUtility(ModelContrastUtility):
         return np.mean([self._single_curve(curve(*args), s, curve.x0) 
                         for args in args_list])
 
+
+##############################################################################
+# Model contrast utilities
+##############################################################################
+
+
+class ModelContrastUtility(_Utility):
+    def __init__(self, model, other_model, loss_metric=None):
+        self.model = model
+        self.other_model = other_model
+        self.loss_metric = loss_metric
+
     def _single_curve(self, X_curve, s, x0):
-        scorer = get_scorer(self.scoring)
         y_curve = self.model(X_curve)
         other_model = self.get_comparison_model(x0)
-        class _WrapperEstimator():
-            def predict(_, X):
-                return other_model(X)
-        score = scorer(_WrapperEstimator(), X_curve, y_curve)
-        loss = -score
-        return self._multiplier() * loss
+        y_other_curve = other_model(X_curve)
+        return self.from_plot_vals(s, y_curve, y_other_curve, loss_metric=self.loss_metric)
 
-    def _multiplier(self):
+    def get_comparison_model(self, x0):
+        return self.other_model
+
+    @classmethod
+    def from_plot_vals(cls, x, y, y_other, loss_metric=None):
+        if loss_metric is None:
+            loss_metric = mean_squared_error
+        assert np.allclose(np.diff(x), x[1]-x[0]), 'x should be evenly spaced points'
+        return cls._multiplier() * loss_metric(y, y_other)
+
+    @classmethod
+    def _multiplier(cls):
         return 1
+
+
+class LeastConstantUtility(ModelContrastUtility):
+    def __init__(self, model, loss_metric=None):
+        self.model = model
+        self.loss_metric = loss_metric
 
     def get_comparison_model(self, x0):
         y_constant = self.model(x0.reshape(1, -1))[0]
@@ -93,50 +80,64 @@ class LeastConstantUtility(ModelContrastUtility):
 
 
 class MostConstantUtility(LeastConstantUtility):
+    @classmethod
     def _multiplier(self):
         return -1
 
 
-class BestPartialModelUtility(Utility):
-    def __init__(self, model, regression_estimator, scoring='neg_mean_squared_error'):
+##############################################################################
+# Functional property validation utilities
+##############################################################################
+
+
+class FunctionalPropertyUtility(_Utility):
+    def __init__(self, model, regression_estimator=None, loss_metric=None):
         self.model = model
         self.regression_estimator = regression_estimator
-        self.scoring = scoring
+        self.loss_metric = loss_metric
 
-    def _single_curve(self, X_curve, s):
-        scorer = check_scoring(self.regression_estimator, scoring=self.scoring)
+    def _single_curve(self, X_curve, s, x0):
         s = np.array(s)
-
-        # Fit regression model
         y_curve = self.model(X_curve)
-        reg = clone(self.regression_estimator)
-        reg.fit(s.reshape(-1, 1), y_curve)
-        
-        # Score function
-        score = scorer(reg, s.reshape(-1,1), y_curve)
-        loss = -score
-        
-        self.regressor_ = reg
-        self.scorer_ = scorer
-        return loss
+        return self.from_plot_vals(s, y_curve, regression_estimator=self.regression_estimator, loss_metric=self.loss_metric)
 
     def fit_model(self, X, y):
         reg = clone(self.regression_estimator)
         reg.fit(X, y)
         return reg
 
+    @classmethod
+    def from_plot_vals(cls, x, y, regression_estimator=None, loss_metric=None):
+        if regression_estimator is None:
+            regression_estimator = LinearRegression()
+        if loss_metric is None:
+            loss_metric = mean_squared_error
+        assert np.allclose(np.diff(x), x[1]-x[0]), 'x should be evenly spaced points'
 
-class LeastLinearUtility(BestPartialModelUtility):
-    def __init__(self, model, scoring='neg_mean_squared_error'):
+        # Fit regression model
+        reg = clone(regression_estimator)
+        reg.fit(x.reshape(-1, 1), y_curve)
+
+        # Predict and compute loss
+        y_other = reg.predict(x.reshape(-1, 1))
+        return cls._multiplier() * loss_metric(y, y_other)
+
+    @classmethod
+    def _multiplier(cls):
+        return 1
+
+
+class LeastLinearUtility(FunctionalPropertyUtility):
+    def __init__(self, model, loss_metric=None):
         self.model = model
-        self.scoring = scoring
+        self.loss_metric = loss_metric
         self.regression_estimator = LinearRegression()
 
 
-class LeastKernelRidgeUtility(BestPartialModelUtility):
-    def __init__(self, model, scoring='neg_mean_squared_error', kernel='rbf', gamma=0.001, alpha=1e-13, **kernel_ridge_params):
+class LeastKernelRidgeUtility(FunctionalPropertyUtility):
+    def __init__(self, model, loss_metric=None, kernel='rbf', gamma=0.001, alpha=1e-13, **kernel_ridge_params):
         self.model = model
-        self.scoring = scoring
+        self.loss_metric = loss_metric
         self.regression_estimator = KernelRidge(kernel=kernel, gamma=gamma, alpha=alpha, **kernel_ridge_params)
 
 
@@ -179,16 +180,12 @@ class _FixedIsotonicRegression(IsotonicRegression):
         return X
 
 
-class LeastMonotonicUtility(BestPartialModelUtility):
-    def __init__(self, model, scoring='neg_mean_squared_error'):
+class LeastMonotonicUtility(FunctionalPropertyUtility):
+    def __init__(self, model, loss_metric=None):
         self.model = model
-        self.scoring = scoring
+        self.loss_metric = loss_metric
         self.regression_estimator = _FixedIsotonicRegression(
             increasing='auto', out_of_bounds='clip')
-
-
-# Alias for backwards compatibility
-MonotonicUtility = LeastMonotonicUtility
 
 
 class _LipschitzRegressor(BaseEstimator, RegressorMixin):
@@ -240,18 +237,24 @@ class _LipschitzRegressor(BaseEstimator, RegressorMixin):
         return X
 
 
-class LeastLipschitzUtility(BestPartialModelUtility):
-    def __init__(self, model, lipschitz_constant=1, scoring='neg_mean_squared_error'):
+class LeastLipschitzUtility(FunctionalPropertyUtility):
+    def __init__(self, model, lipschitz_constant=1, loss_metric=None):
         self.model = model
-        self.scoring = scoring
+        self.loss_metric = loss_metric
         self.regression_estimator = _LipschitzRegressor(lipschitz_constant)
 
 
-class TotalVariationUtility(Utility):
+##############################################################################
+# Unused utilities (kept for reference but not part of public API)
+# May have errors or be broken as well since some things have changed
+##############################################################################
+
+
+class _TotalVariationUtility(Utility):
     def __init__(self, model):
         self.model = model
 
-    def _single_curve(self, X_curve, s):
+    def _single_curve(self, X_curve, s, x0):
         if len(s) < 2:
             return 0
         bandwidth = s[1] - s[0]
@@ -260,11 +263,11 @@ class TotalVariationUtility(Utility):
         return np.mean(np.abs(grad_f_out))
 
 
-class MostJerkUtility(Utility):
+class _MostJerkUtility(Utility):
     def __init__(self, model):
         self.model = model
 
-    def _single_curve(self, X_curve, s):
+    def _single_curve(self, X_curve, s, x0):
         if len(s) < 2:
             return 0
         bandwidth = s[1] - s[0]
@@ -278,16 +281,16 @@ class MostJerkUtility(Utility):
         return 1.0
 
 
-class LeastJerkUtility(MostJerkUtility):
+class _LeastJerkUtility(MostJerkUtility):
     def _multiplier(self):
         return -1.0
 
 
-class MostCurvatureUtility(Utility):
+class _MostCurvatureUtility(Utility):
     def __init__(self, model):
         self.model = model
 
-    def _single_curve(self, X_curve, s):
+    def _single_curve(self, X_curve, s, x0):
         if len(s) < 2:
             return 0
         bandwidth = s[1] - s[0]
@@ -300,16 +303,16 @@ class MostCurvatureUtility(Utility):
         return 1.0
 
 
-class LeastCurvatureUtility(MostCurvatureUtility):
+class _LeastCurvatureUtility(MostCurvatureUtility):
     def _multiplier(self):
         return -1.0
     
 
-class ConditionalLinearUtility(Utility):
+class _ConditionalLinearUtility(Utility):
     def __init__(self, model):
         self.model = model
 
-    def _single_curve(self, X_curve, s):
+    def _single_curve(self, X_curve, s, x0):
         f_out = self.model(X_curve)
         linear_model = self.fit_linear_model(s, f_out)
         g_out = linear_model(s)
@@ -323,7 +326,7 @@ class ConditionalLinearUtility(Utility):
         return linear_model
 
 
-class UniquenessUtility(Utility):
+class _UniquenessUtility(Utility):
     def __init__(self, model, X_sample):
         self.model = model
         self.X_sample = X_sample
@@ -387,7 +390,7 @@ class UniquenessUtility(Utility):
         ])
 
 
-class GradientUniquenessUtility(UniquenessUtility):
+class _GradientUniquenessUtility(_UniquenessUtility):
     def _curve_difference(self, curve, other_curve, args_list):
         def get_gradients(curve, args):
             X_curve = curve(*args)
