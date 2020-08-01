@@ -4,6 +4,8 @@ import numpy as np
 
 from .funcs import is_categorical, get_dtype_categories
 from .curve import create_coordinate_curves, create_image_coordinate_curves
+from .plot import plot_curve_vals
+
 
 def optimize_curve(x0, utility, X, density_estimator='gaussian', dtypes=None, max_numeric_change=2, max_categorical_change=0,
                    curve_eps='auto', n_angle_grid=100, n_utility_grid=50, max_iter=100, max_inner_iter=100,
@@ -97,6 +99,45 @@ def optimize_curve(x0, utility, X, density_estimator='gaussian', dtypes=None, ma
     #    cur_curve.Z_list = [x0[sel_categorical], cur_curve.Z_list[0]]
 
     return cur_curve
+
+
+def _optimize_and_plot(X_targets, utility, X_for_bounds=None, max_numeric_change=1, optimize_kwargs=None, plot_kwargs=None):
+    # Currently not ready for production since untested so made private
+    #'''Optimizes utility over a single target (x0) or a set of targets and then plots the optimal curve.'''
+    # Handle single target
+    X_targets = np.array(X_targets)
+    if X_targets.ndim == 1:
+        X_targets = X_targets.reshape(-1, 1)
+    if X_for_bounds is None:
+        X_for_bounds = X_targets
+    if optimize_kwargs is None:
+        optimize_kwargs = {}
+    if plot_kwargs is None:
+        plot_kwargs = {}
+
+    # Optimize curve for each possible point
+    best_curves = np.array([
+        optimize_curve(x0, utility, X_for_bounds,
+                       max_numeric_change=max_numeric_change, **optimize_kwargs)
+        for x0 in X_targets
+    ])
+
+    # Rerun utility computation to get utility of best curves
+    utility_kwargs = {}
+    if 'n_utility_grid' in optimize_kwargs:
+        utility_kwargs['n_grid'] = optimize_kwargs['n_utility_grid']
+    best_utilities = np.array([
+        utility(best_curve, **utility_kwargs) 
+        for best_curve in best_curves])
+
+    # Choose best sample and best curve
+    best_idx = np.argmax(best_utilities)
+    best_curve = best_curves[best_idx]
+
+    # Plot best curve and best utility
+    plot_curve_vals(curve=best_curve, utility=utility, **plot_kwargs)
+
+    return dict(best_curve=best_curve, best_curves_per_sample=best_curves)
 
 
 def _create_rotated_curve(curve, rad, i, j):
