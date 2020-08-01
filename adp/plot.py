@@ -9,7 +9,7 @@ from .curve import create_coordinate_curves, create_image_coordinate_curves
 
 def plot_curve_vals(curve, model=None, utility=None, feature_labels=None, n_grid=50, ax=None,
                     model_label='Model', other_model_label='auto', target_label='Target', tick_rotation=0,
-                    y_bounds=None, replace_space_with_newline=True, auxiliary_scoring=None, legend_kwargs=None, trans=False):
+                    y_bounds=None, replace_space_with_newline=True, legend_kwargs=None, trans=False):
     if ax is None:
         ax = plt.gca()
     if model is None and utility is None:
@@ -77,7 +77,7 @@ def plot_curve_vals(curve, model=None, utility=None, feature_labels=None, n_grid
     if utility is not None:
         other_f_vals = None
         try:
-            # Global model utility
+            # Model contrast utility
             other_f_vals = [utility.get_comparison_model(curve.x0)(X_val) for X_val in X_vals]
         except AttributeError:
             try:
@@ -93,13 +93,13 @@ def plot_curve_vals(curve, model=None, utility=None, feature_labels=None, n_grid
                     pass
                 else:
                     if other_model_label == 'auto':
-                        other_model_label = 'BestPartial'
+                        other_model_label = 'BestReg.'
             else:
                 if other_model_label == 'auto':
                     other_model_label = 'BestLin'
         else:
             if other_model_label == 'auto':
-                other_model_label = 'ComparisonModel'
+                other_model_label = 'ContrastModel'
         prefix = other_model_label
 
         if other_f_vals is not None:
@@ -245,16 +245,6 @@ def plot_curve_vals(curve, model=None, utility=None, feature_labels=None, n_grid
         U = utility(curve, n_grid=n_grid)
         utility_label = type(utility).__name__
         title = '%s=%.2g' % (utility_label, U)
-        if auxiliary_scoring is not None:
-            try:
-                utility.scoring = auxiliary_scoring
-                U_added = utility(curve, n_grid=n_grid)
-            except AttributeError:
-                warnings.warn('`auxiliary_scoring` parameter is not None but seems like utility does '
-                              'utility does not support scoring.  You should probably use the '
-                              'class or subclass of BestPartialModelUtility.')
-            else:
-                title = '%s, %s=%.2f' % (title, str(auxiliary_scoring), -U_added)
         ax.set_title(title)
 
     if y_bounds is not None:
