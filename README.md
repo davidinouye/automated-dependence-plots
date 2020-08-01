@@ -21,7 +21,7 @@ If you use this code, please cite this paper:
 
 Visualizing the output of a model via dependence plots is a classical technique to understand how model predictions change as we vary the inputs. Automated dependence plots (ADPs) are a way to automate the manual selection of interesting or relevant dependence plots by optimizing over the space of dependence plots.
 
-The basic idea is to define a utility function that quantifies how "interesting" or "relevant" a plot is---for example, this could be directions over which the model changes abruptly (`MostCurvatureUtility`), is non-monotonic (`LeastMonotonicUtility`), or oscillates (`TotalVariationUtility`). The steps are as follows:
+The basic idea is to define a utility function that quantifies how "interesting" or "relevant" a plot is---for example, this could be directions over which the model changes abruptly (`LeastLipschitzUtility`), is non-monotonic (`LeastMonotonicUtility`), or changes the most from a constant function (`LeastConstantUtility`). The steps are as follows:
 
 1. Define a plot utility measure (or use a pre-defined utility)
 2. Optimize over directions in feature space to find plots with the highest utility
@@ -35,6 +35,13 @@ A more interesting example finds interesting directions in the latent space of a
 <br/><br/>
 <img width="800" src="https://user-images.githubusercontent.com/8812505/86980071-85834480-c148-11ea-85fa-04688b95c964.png" />
 
+## Basic structure of module
+This `adp` module contains four main submodules that can be used together or separately:
+
+1. `adp.curve` - This submodule handles creating directional curves (defined by directional vector `v`) in the input space centered on a target point usually denoted by `x0`. In particular, this module handles boundes for the curve based on a training dataset. There is also some simple support for handling categorical variables.
+2. `adp.utility` - This submodule defines multiple concrete utility measures for evaluating the interestingness or usefulness of various directional curves.
+3. `adp.optimize` - This submodule handles optimization over possible curves to automatically optimize the specified utility.
+4. `adp.plot` - This submodule handles plotting of curves including handling curves that vary in more than one dimension and showing the alternative models that depend on the utility selected.
 
 ## Quickstart
 To setup an environment (via conda), download data and pretrained models, and run notebooks to generate figures,
@@ -46,6 +53,7 @@ make data
 make models
 make test
 ```
+
 
 ## Examples
 
