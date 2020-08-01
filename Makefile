@@ -35,7 +35,7 @@ models: models/mnist_cnn.pt models/traffic_model.h5 models/vae_mnist.pt
 models/%:
 	# Download zip and extract into models folder
 	-mkdir models
-	curl -L https://app.box.com/shared/static/mto2s47khdr9zcpvpchn0dqsi1pmlkpb.zip --output adp-example-models.zip
+	curl -L https://app.box.com/shared/static/lieaf3cdna8krkhmjlpyakp6n3wkpclz.zip --output adp-example-models.zip
 	unzip -o adp-example-models.zip
 	rm adp-example-models.zip
 
