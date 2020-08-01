@@ -99,7 +99,7 @@ class FunctionalPropertyUtility(_Utility):
     def _single_curve(self, X_curve, s, x0):
         s = np.array(s)
         y_curve = self.model(X_curve)
-        return self.from_plot_vals(s, y_curve, regression_estimator=self.regression_estimator, loss_metric=self.loss_metric)
+        return FunctionalPropertyUtility.from_plot_vals(s, y_curve, regression_estimator=self.regression_estimator, loss_metric=self.loss_metric)
 
     def fit_model(self, X, y):
         reg = clone(self.regression_estimator)
@@ -109,36 +109,61 @@ class FunctionalPropertyUtility(_Utility):
     @classmethod
     def from_plot_vals(cls, x, y, regression_estimator=None, loss_metric=None):
         if regression_estimator is None:
-            regression_estimator = LinearRegression()
+            regression_estimator = cls._default_regressor()
         if loss_metric is None:
             loss_metric = mean_squared_error
         assert np.allclose(np.diff(x), x[1]-x[0]), 'x should be evenly spaced points'
 
         # Fit regression model
         reg = clone(regression_estimator)
-        reg.fit(x.reshape(-1, 1), y_curve)
+        reg.fit(x.reshape(-1, 1), y)
 
         # Predict and compute loss
         y_other = reg.predict(x.reshape(-1, 1))
         return cls._multiplier() * loss_metric(y, y_other)
 
     @classmethod
+    def _default_regressor(cls, **kwargs):
+        return LinearRegression(**kwargs)
+
+    @classmethod
     def _multiplier(cls):
         return 1
 
-
-class LeastLinearUtility(FunctionalPropertyUtility):
-    def __init__(self, model, loss_metric=None):
+class _ConcreteFunctionalPropertyUtility(FunctionalPropertyUtility):
+    def __init__(self, model, regressor_kwargs=None, loss_metric=None):
         self.model = model
         self.loss_metric = loss_metric
-        self.regression_estimator = LinearRegression()
+        if regressor_kwargs is None:
+            regressor_kwargs = {}
+        self.regression_estimator = self._default_regressor(**regressor_kwargs)
+
+    @classmethod
+    def from_plot_vals(cls, x, y, regressor_kwargs=None, loss_metric=None):
+        if regressor_kwargs is None:
+            regressor_kwargs = {}
+        if loss_metric is None:
+            loss_metric = mean_squared_error
+        assert np.allclose(np.diff(x), x[1]-x[0]), 'x should be evenly spaced points'
+
+        reg = cls._default_regressor(**regressor_kwargs)
+
+        return FunctionalPropertyUtility.from_plot_vals(
+            x, y, regression_estimator=reg, loss_metric=loss_metric)
 
 
-class LeastKernelRidgeUtility(FunctionalPropertyUtility):
-    def __init__(self, model, loss_metric=None, kernel='rbf', gamma=0.001, alpha=1e-13, **kernel_ridge_params):
-        self.model = model
-        self.loss_metric = loss_metric
-        self.regression_estimator = KernelRidge(kernel=kernel, gamma=gamma, alpha=alpha, **kernel_ridge_params)
+class LeastLinearUtility(_ConcreteFunctionalPropertyUtility):
+    @classmethod
+    def _default_regressor(cls, **kwargs):
+        return LinearRegression(**kwargs)
+
+
+class LeastKernelRidgeUtility(_ConcreteFunctionalPropertyUtility):
+    @classmethod
+    def _default_regressor(cls, **kwargs):
+        both_kwargs = dict(kernel='rbf', gamma=0.001, alpha=1e-13)
+        both_kwargs.update(kwargs)
+        return KernelRidge(**both_kwargs)
 
 
 class _FixedIsotonicRegression(IsotonicRegression):
@@ -148,7 +173,7 @@ class _FixedIsotonicRegression(IsotonicRegression):
 
     In addition, we make auto actually try both increasing
     and decreasing rather than determining via Spearman's
-    correlation when increasing = 'auto'.
+    correlation when increasing = 'auto'
     """
 
     def fit(self, X, y=None):
@@ -180,12 +205,12 @@ class _FixedIsotonicRegression(IsotonicRegression):
         return X
 
 
-class LeastMonotonicUtility(FunctionalPropertyUtility):
-    def __init__(self, model, loss_metric=None):
-        self.model = model
-        self.loss_metric = loss_metric
-        self.regression_estimator = _FixedIsotonicRegression(
-            increasing='auto', out_of_bounds='clip')
+class LeastMonotonicUtility(_ConcreteFunctionalPropertyUtility):
+    @classmethod
+    def _default_regressor(cls, **kwargs):
+        both_kwargs = dict(increasing='auto', out_of_bounds='clip')
+        both_kwargs.update(kwargs)
+        return _FixedIsotonicRegression(**both_kwargs)
 
 
 class _LipschitzRegressor(BaseEstimator, RegressorMixin):
@@ -237,11 +262,27 @@ class _LipschitzRegressor(BaseEstimator, RegressorMixin):
         return X
 
 
-class LeastLipschitzUtility(FunctionalPropertyUtility):
+class LeastLipschitzUtility(_ConcreteFunctionalPropertyUtility):
     def __init__(self, model, lipschitz_constant=1, loss_metric=None):
         self.model = model
         self.loss_metric = loss_metric
-        self.regression_estimator = _LipschitzRegressor(lipschitz_constant)
+        self.regression_estimator = self._default_regressor(
+            lipschitz_constant=lipschitz_constant)
+
+    @classmethod
+    def _default_regressor(cls, **kwargs):
+        return _LipschitzRegressor(**kwargs)
+
+    @classmethod
+    def from_plot_vals(cls, x, y, lipschitz_constant=1, loss_metric=None):
+        if loss_metric is None:
+            loss_metric = mean_squared_error
+        assert np.allclose(np.diff(x), x[1]-x[0]), 'x should be evenly spaced points'
+
+        reg = cls._default_regressor(lipschitz_constant=lipschitz_constant)
+
+        return FunctionalPropertyUtility.from_plot_vals(
+            x, y, regression_estimator=reg, loss_metric=loss_metric)
 
 
 ##############################################################################
@@ -250,7 +291,7 @@ class LeastLipschitzUtility(FunctionalPropertyUtility):
 ##############################################################################
 
 
-class _TotalVariationUtility(Utility):
+class _TotalVariationUtility(_Utility):
     def __init__(self, model):
         self.model = model
 
@@ -263,7 +304,7 @@ class _TotalVariationUtility(Utility):
         return np.mean(np.abs(grad_f_out))
 
 
-class _MostJerkUtility(Utility):
+class _MostJerkUtility(_Utility):
     def __init__(self, model):
         self.model = model
 
@@ -281,12 +322,12 @@ class _MostJerkUtility(Utility):
         return 1.0
 
 
-class _LeastJerkUtility(MostJerkUtility):
+class _LeastJerkUtility(_MostJerkUtility):
     def _multiplier(self):
         return -1.0
 
 
-class _MostCurvatureUtility(Utility):
+class _MostCurvatureUtility(_Utility):
     def __init__(self, model):
         self.model = model
 
@@ -303,12 +344,12 @@ class _MostCurvatureUtility(Utility):
         return 1.0
 
 
-class _LeastCurvatureUtility(MostCurvatureUtility):
+class _LeastCurvatureUtility(_MostCurvatureUtility):
     def _multiplier(self):
         return -1.0
     
 
-class _ConditionalLinearUtility(Utility):
+class _ConditionalLinearUtility(_Utility):
     def __init__(self, model):
         self.model = model
 
@@ -326,7 +367,7 @@ class _ConditionalLinearUtility(Utility):
         return linear_model
 
 
-class _UniquenessUtility(Utility):
+class _UniquenessUtility(_Utility):
     def __init__(self, model, X_sample):
         self.model = model
         self.X_sample = X_sample
